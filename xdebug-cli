@@ -1,3 +1,93 @@
 #!/bin/bash
 
-php -d xdebug.cli_color=1 -d xdebug.remote_enable=1 -d xdebug.remote_port=9000 -d xdebug.remote_handler=dbgp -d xdebug.remote_connect_back=1 -d xdebug.remote_autostart=1 -d xdebug.remote_host=`echo $SSH_CLIENT | cut -d "=" -f 2 | awk '{print $1}'` $@
+# General config
+readonly SYSTEM="$(uname)"
+readonly VERSION='0.1.0'
+
+# ------------------------------------------------------------
+# Defaults
+# ------------------------------------------------------------
+XDEBUG_PORT="9000"
+FILE=""
+
+# ------------------------------------------------------------
+# Constant Exit Error Codes
+# ------------------------------------------------------------
+readonly ERROR_USAGE=2
+readonly ERROR_MISSING_ARGUMENTS=3
+
+usage() {
+	echo "xdebug-cli [<options>] path/to/file.php"
+	exit $ERROR_USAGE
+}
+
+usage_long() {
+	cat << EOF
+NAME
+	xdebug-cli
+
+SYNOPSYS
+	xdebug-cli [<options>] <path/to/file.php>
+
+DESCRIPTION
+	xdebug-cli allows you to xdebug command line php scripts.
+
+OPTIONS
+	-p/--port	Let xdebug-cli use specific port
+
+EXAMPLES
+	· xdebug-cli path/to/some/script.php
+	· xdebug-cli -p 9009 path/to/some/script.php
+	· xdebug-cli --port 9009 path/to/some/script.php
+
+SET DEFAULTS
+	· port 9000
+
+VERSION
+	$VERSION
+EOF
+exit 0
+}
+
+# ------------------------------------------------------------
+# Main
+# ------------------------------------------------------------
+main() {
+	php -d xdebug.cli_color=1 -d xdebug.remote_enable=1 -d xdebug.remote_port=$XDEBUG_PORT -d xdebug.remote_handler=dbgp -d xdebug.remote_connect_back=1 -d xdebug.remote_autostart=1 -d xdebug.remote_host=`echo $SSH_CLIENT | cut -d "=" -f 2 | awk '{print $1}'` $FILE
+	exit 0
+}
+
+# 2 args are needed: action and url
+if [ $# = 0 ]; then
+	usage;
+fi
+
+while test $# != 0
+do
+	case "$1" in
+		-h|--h|--he|--hel|--help|help)
+			usage_long
+			;;
+		-p|--port*)
+			case "$#,$1" in
+				*,*=*)
+					XDEBUG_PORT=$(expr "z$1" : 'z-[^=]*=\(.*\)')
+					;;
+				*)
+					if ! echo "$2" | egrep -q '^-'; then
+						XDEBUG_PORT="$2"
+						shift
+					else
+						print_error_and_die "Too few arguments for options --port." $ERROR_MISSING_ARGUMENTS
+					fi
+					;;
+			esac
+			;;
+		*)
+			# Pass thru anything that may be meant for fetch.
+			[ -n "$1" ] && FILE=$1
+			;;
+	esac
+	shift
+done
+main
