@@ -17,7 +17,7 @@ readonly ERROR_USAGE=2
 readonly ERROR_MISSING_ARGUMENTS=3
 
 usage() {
-	echo "xdebug-cli [<options>] path/to/file.php"
+	echo "xdebug-cli [<options>] <path/to/file.php>"
 	exit $ERROR_USAGE
 }
 
